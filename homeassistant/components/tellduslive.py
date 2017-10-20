@@ -35,15 +35,18 @@ CONF_TOKEN_SECRET = 'token_secret'
 CONF_HOST = 'host'
 CONF_UPDATE_INTERVAL = 'update_interval'
 
+LIVE_KEY_URL = "http://api.telldus.com/keys/index"
+LOCAL_API_DEVICES = ['TellstickZnet', 'TellstickNetV2']
+
 MIN_UPDATE_INTERVAL = timedelta(seconds=5)
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=1)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
-        vol.Required(CONF_PUBLIC_KEY): cv.string,
-        vol.Required(CONF_PRIVATE_KEY): cv.string,
-        vol.Required(CONF_TOKEN): cv.string,
-        vol.Required(CONF_TOKEN_SECRET): cv.string,
+        vol.Optional(CONF_PUBLIC_KEY): cv.string,
+        vol.Optional(CONF_PRIVATE_KEY): cv.string,
+        vol.Optional(CONF_TOKEN): cv.string,
+        vol.Optional(CONF_TOKEN_SECRET): cv.string,
         vol.Optional(CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL): (
             vol.All(cv.time_period, vol.Clamp(min=MIN_UPDATE_INTERVAL)))
     }),
@@ -119,8 +122,8 @@ def request_local_configuration(hass, config, host):
 
         hass.async_add_job(success)
 
-    instance = configurator.request_config(
-        "TelldusLive",
+    hass.data[KEY_CONFIG][host] = configurator.request_config(
+        "TelldusLive - LocalAPI",
         configuration_callback,
         description=('To link your TelldusLive account ',
                     'click the link, login, and authorize:'),
@@ -131,19 +134,94 @@ def request_local_configuration(hass, config, host):
     )
 
 
-def setup(hass, config, local=None):
+def request_live_configuration(hass, config, host):
+    """Request TelldusLive authorized."""
+    logger = logging.getLogger(__name__)
+
+    configurator = hass.components.configurator
+    hass.data.setdefault(KEY_CONFIG, {})
+    instance = hass.data[KEY_CONFIG].get(DOMAIN)
+    # Configuration already in progress
+    if instance:
+        return
+
+    logger.info("Found TelldusLive client: %s" % host)
+
+    def configuration_callback(callback_data):
+        """Handle the submitted configuration."""
+        res = setup(hass, config, oauth={
+            CONF_PUBLIC_KEY: callback_data.get(CONF_PUBLIC_KEY),
+            CONF_PRIVATE_KEY: callback_data.get(CONF_PRIVATE_KEY),
+            CONF_TOKEN: callback_data.get(CONF_TOKEN),
+            CONF_TOKEN_SECRET: callback_data.get(CONF_TOKEN_SECRET)})
+        if not res:
+            hass.async_add_job(configurator.notify_errors, instance,
+                               "Unable to connect.")
+            return
+
+        @asyncio.coroutine
+        def success():
+            """Set up was successful."""
+            # Save config
+            if not config_from_file(
+                    hass.config.path(TELLLDUS_CONFIG_FILE), {DOMAIN: {
+                        CONF_PUBLIC_KEY: callback_data.get(CONF_PUBLIC_KEY),
+                        CONF_PRIVATE_KEY: callback_data.get(CONF_PRIVATE_KEY),
+                        CONF_TOKEN: callback_data.get(CONF_TOKEN),
+                        CONF_TOKEN_SECRET: callback_data.get(CONF_TOKEN_SECRET),
+                    }}):
+                _LOGGER.error("Failed to save configuration file")
+            hass.async_add_job(configurator.request_done, instance)
+
+        hass.async_add_job(success)
+
+    hass.data[KEY_CONFIG][DOMAIN] = configurator.request_config(
+        "TelldusLive",
+        configuration_callback,
+        description=('To link your TelldusLive account',
+                    ' click the link, login, and fill the resulting keys below:'),
+        submit_caption='Submit',
+        link_name="Generate TelldusLive keys",
+        link_url=LIVE_KEY_URL,
+        entity_picture='/static/images/logo_tellduslive.png',
+        fields=[{
+            'id': CONF_PUBLIC_KEY,
+            'name': 'Public key',
+            'type': ''
+        }, {
+            'id': CONF_PRIVATE_KEY,
+            'name': 'Private key',
+            'type': ''
+        }, {
+            'id': CONF_TOKEN,
+            'name': 'Token',
+            'type': ''
+        }, {
+            'id': CONF_TOKEN_SECRET,
+            'name': 'Token secret',
+            'type': ''
+        },
+        ])
+
+
+def setup(hass, config, local=None, oauth=None):
     """Set up the Telldus Live component."""
 
     def tellstick_discovered(service, info):
         """Run when a Tellstick is discovered."""
         if DOMAIN in hass.data:
             return  # Tellstick already configured
-        host = info[0]
+        host, device = info[0], info[1]
+        if not any(x in device for x in LOCAL_API_DEVICES):
+            hass.async_add_job(request_live_configuration, hass, config, host)
+            return
+
         file_config = config_from_file(hass.config.path(TELLLDUS_CONFIG_FILE))
         if file_config:
             file_host, _ = file_config.popitem()
             if file_host == host:
                 return
+        hass.async_add_job(request_live_configuration, hass, config, host)
         hass.async_add_job(request_local_configuration, hass, config, host)
 
     discovery.async_listen(hass, SERVICE_TELLDUSLIVE, tellstick_discovered)
@@ -152,28 +230,40 @@ def setup(hass, config, local=None):
     token = None
     # get config from tellduslive.conf
     file_config = config_from_file(hass.config.path(TELLLDUS_CONFIG_FILE))
-
     # Via discovery
     if local is not None:
         # Parse discovery data
         host = local[CONF_HOST]
         token = local[CONF_TOKEN]
         _LOGGER.info("Discovered TelldusLive controller: %s", host)
-    elif file_config:
+    elif file_config and oauth is None:  # Test oauth so we don't overwrite user settings from file.
         # Setup a configured TellStick
         host, host_config = file_config.popitem()
-        token = host_config[CONF_TOKEN]
+        if host == DOMAIN:  # We have a tellduslive.conf entry
+            host = None
+            oauth = host_config
+        else:
+            token = host_config[CONF_TOKEN]
 
-    if host is None and DOMAIN not in config:
+    cnf = config.get(DOMAIN, {})
+    cnf_live = all((cnf.get(CONF_PUBLIC_KEY) is None,
+                    cnf.get(CONF_PRIVATE_KEY) is None,
+                    cnf.get(CONF_TOKEN) is None,
+                    cnf.get(CONF_TOKEN_SECRET) is None))
+    if host is None and oauth is None and cnf_live:
+        if cnf_live:
+            _LOGGER.info("Configure TelldusLive")
+            hass.async_add_job(request_live_configuration, hass, config, DOMAIN)
         return True
 
-    client = TelldusLiveClient(hass, config, host, token)
+    client = TelldusLiveClient(hass, config, host, token, oauth)
 
     if not client.validate_session():
         _LOGGER.error(
             "Authentication Error: Please make sure you have configured your "
             "keys that can be acquired from "
             "https://api.telldus.com/keys/index")
+
         return False
 
     hass.data[DOMAIN] = client
@@ -186,7 +276,7 @@ def setup(hass, config, local=None):
 class TelldusLiveClient(object):
     """Get the latest data and update the states."""
 
-    def __init__(self, hass, config, host=None, token=None):
+    def __init__(self, hass, config, host=None, token=None, oauth=None):
         """Initialize the Tellus data object."""
         from tellduslive import Client
 
@@ -200,6 +290,11 @@ class TelldusLiveClient(object):
             public_key = None
             private_key = None
             token_secret = None
+        elif oauth is not None:
+            public_key = oauth[CONF_PUBLIC_KEY]
+            private_key = oauth[CONF_PRIVATE_KEY]
+            token = oauth[CONF_TOKEN]
+            token_secret = oauth[CONF_TOKEN_SECRET]
         else:
             public_key = config[DOMAIN].get(CONF_PUBLIC_KEY)
             private_key = config[DOMAIN].get(CONF_PRIVATE_KEY)
