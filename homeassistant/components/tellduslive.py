@@ -108,10 +108,11 @@ def setup(hass, config, local=None, oauth=None):
         if not auth_url:
             return
 
+        _LOGGER.debug('Got authorization URL %s', auth_url)
+
         def configuration_callback(callback_data):
             """Handle the submitted configuration."""
-            from tellduslive import Client
-            access_token = Client.authorize_local_api(host, request_token)
+            session.authorize()
             res = setup(hass, config, local={CONF_HOST: host, CONF_TOKEN: access_token})
             if not res:
                 hass.async_add_job(configurator.notify_errors, instance,
@@ -123,7 +124,7 @@ def setup(hass, config, local=None, oauth=None):
                 """Set up was successful."""
                 # Save config
                 if not load_config(
-                        {host: {
+                        {host or DOMAIN: {
                             CONF_TOKEN: access_token,
                         }}):
                     _LOGGER.error("Failed to save configuration file")
@@ -134,9 +135,9 @@ def setup(hass, config, local=None, oauth=None):
         hass.data[KEY_CONFIG][host] = configurator.request_config(
             'TelldusLive ({})'.format('LocalAPI' if host else 'Cloud service'),
             configuration_callback,
-            description=('To link your TelldusLive account ',
-                        'click the link, login, and authorize:'),
-            submit_caption='I authorized successfully',
+            description=('To link your TelldusLive account, '
+                         'click the link, login, and authorize {}. Then click Confirm button.'.format(PROJECT_NAME)),
+            submit_caption='Confirm',
             link_name="Link TelldusLive account",
             link_url=auth_url,
             entity_picture='/static/images/logo_tellduslive.png',
