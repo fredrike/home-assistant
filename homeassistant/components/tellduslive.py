@@ -139,7 +139,7 @@ def setup(hass, config, local=None, oauth=None):
         """Run when a Tellstick is discovered."""
         if DOMAIN in hass.data:
             return  # Tellstick already configured
-        host, device = info[0], info[1]
+        host, device = info
         if not any(x in device for x in LOCAL_API_DEVICES):
             hass.async_add_job(request_configuration, hass, config)
             return
