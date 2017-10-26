@@ -56,8 +56,9 @@ CONFIG_SCHEMA = vol.Schema({
 ATTR_LAST_UPDATED = 'time_last_updated'
 
 
-def config_from_file(filename, config=None):
+def config_from_file(hass, config=None):
     """Small configuration file management function (from media_player/plex.py)."""
+    filename = hass.config.path(TELLLDUS_CONFIG_FILE)
     if config:
         # We're writing configuration
         try:
@@ -113,7 +114,7 @@ def request_configuration(hass, config, host=None):
             """Set up was successful."""
             # Save config
             if not config_from_file(
-                    hass.config.path(TELLLDUS_CONFIG_FILE), {host: {
+                    hass, {host: {
                         CONF_TOKEN: access_token,
                     }}):
                 _LOGGER.error("Failed to save configuration file")
@@ -145,7 +146,7 @@ def setup(hass, config, local=None, oauth=None):
             hass.async_add_job(request_configuration, hass, config)
             return
 
-        file_config = config_from_file(hass.config.path(TELLLDUS_CONFIG_FILE))
+        file_config = config_from_file(hass)
         if file_config:
             file_host, _ = file_config.popitem()
             if file_host == host:
@@ -158,7 +159,7 @@ def setup(hass, config, local=None, oauth=None):
     host = None
     token = None
     # get config from tellduslive.conf
-    file_config = config_from_file(hass.config.path(TELLLDUS_CONFIG_FILE))
+    file_config = config_from_file(hass)
     # Via discovery
     if local is not None:
         # Parse discovery data
