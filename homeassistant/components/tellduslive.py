@@ -113,29 +113,28 @@ def setup(hass, config, local=None, oauth=None):
 
     config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
 
-    def config_from_file(config=None):
-        """Small configuration file management function (from media_player/plex.py)."""
-        if config:
-            # We're writing configuration
+    def save_config(config=None):
+        """Save configuration."""
+        try:
+            with open(config_filename, 'w') as fdesc:
+                fdesc.write(json.dumps(config))
+        except IOError as error:
+            _LOGGER.error("Saving config file failed: %s", error)
+            return False
+        return True
+
+    def load_config():
+        """Load configuration:"""
+        if os.path.isfile(config_filename):
             try:
-                with open(config_filename, 'w') as fdesc:
-                    fdesc.write(json.dumps(config))
-            except IOError as error:
-                _LOGGER.error("Saving config file failed: %s", error)
+                with open(config_filename, 'r') as fdesc:
+                    return json.loads(fdesc.read())
+            except (ValueError, IOError) as error:
+                _LOGGER.error("Reading config file failed: %s", error)
+                # This won't work yet
                 return False
-            return True
         else:
-            # We're reading config
-            if os.path.isfile(config_filename):
-                try:
-                    with open(config_filename, 'r') as fdesc:
-                        return json.loads(fdesc.read())
-                except (ValueError, IOError) as error:
-                    _LOGGER.error("Reading config file failed: %s", error)
-                    # This won't work yet
-                    return False
-            else:
-                return {}
+            return {}
 
     def tellstick_discovered(service, info):
         """Run when a Tellstick is discovered."""
