@@ -90,7 +90,7 @@ def setup(hass, config, session):
 
         configurator = hass.components.configurator
         hass.data.setdefault(KEY_CONFIG, {})
-        instance = hass.data[KEY_CONFIG].get(host)
+        instance = hass.data[KEY_CONFIG].get(host or DOMAIN)
 
         # Configuration already in progress
         if instance:
