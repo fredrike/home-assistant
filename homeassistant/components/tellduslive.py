@@ -82,7 +82,6 @@ def config_from_file(filename, config=None):
 
 def request_configuration(hass, config, host=None):
     """Request TelldusLive authorized."""
-    logger = logging.getLogger(__name__)
 
     configurator = hass.components.configurator
     hass.data.setdefault(KEY_CONFIG, {})
@@ -92,7 +91,7 @@ def request_configuration(hass, config, host=None):
     if instance:
         return
 
-    logger.info("Found TelldusLive local client: %s" % host)
+    _LOGGER.info("Found TelldusLive local client: %s" % host)
     from tellduslive import Client
     auth_url, request_token = Client.get_authorize_url(host, app='HA')
     if not auth_url:
