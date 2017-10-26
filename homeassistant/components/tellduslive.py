@@ -147,11 +147,15 @@ def setup(hass, config, session):
         """Run when a Tellstick is discovered."""
         if DOMAIN in hass.data:
             return  # Already configured
+
         host, device = info
+
         if not any(x in device for x in LOCAL_API_DEVICES):
+            # Configure the cloud service
             hass.async_add_job(request_configuration)
             return
 
+        # Configure local API access with optional cloud service
         file_config = load_config()
         if file_config:
             file_host, _ = file_config.popitem()
