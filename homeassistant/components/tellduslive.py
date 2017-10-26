@@ -11,7 +11,7 @@ import asyncio
 import logging
 
 from homeassistant.const import (
-    ATTR_BATTERY_LEVEL, DEVICE_DEFAULT_NAME, PROJECT_NAME)
+    ATTR_BATTERY_LEVEL, DEVICE_DEFAULT_NAME, PROJECT_NAME, CONF_TOKEN, CONF_HOST)
 from homeassistant.helpers import discovery
 from homeassistant.components.discovery import SERVICE_TELLDUSLIVE
 import homeassistant.helpers.config_validation as cv
@@ -31,9 +31,7 @@ KEY_CONFIG = 'tellduslive_config'
 
 CONF_PUBLIC_KEY = 'public_key'
 CONF_PRIVATE_KEY = 'private_key'
-CONF_TOKEN = 'token'
 CONF_TOKEN_SECRET = 'token_secret'
-CONF_HOST = 'host'
 CONF_UPDATE_INTERVAL = 'update_interval'
 
 PUBLIC_KEY='THUPUNECH5YEQA3RE6UYUPRUZ2DUGUGA'
@@ -59,7 +57,7 @@ CONFIG_SCHEMA = vol.Schema({
 ATTR_LAST_UPDATED = 'time_last_updated'
 
 
-def setup(hass, config, session):
+def setup(hass, config, session=None):
     """Set up the Telldus Live component."""
 
     from tellduslive import LocalAPISession, LiveSession
@@ -73,17 +71,18 @@ def setup(hass, config, session):
                 f.write(json.dumps(config))
             return True
         except IOError as error:
-            _LOGGER.error("Saving config file failed: %s", error)
+            _LOGGER.error("Saving config file %s failed: %s", config_filename, error)
  
     def load_config():
         """Load configuration:"""
-        if not os.path.isfile(config_filename):
-            return {}
         try:
             with open(config_filename) as f:
                 return json.loads(f.read())
-        except (ValueError, IOError) as error:
-            _LOGGER.error("Reading config file failed: %s", error)
+        except (FileNotFoundError):
+            pass
+        except (ValueError, OSError) as error:
+            _LOGGER.warning("Reading config file %s failed: %s", config_filename, error)
+        return {}
 
     def request_configuration(host=None):
         """Request TelldusLive authorization."""
@@ -107,6 +106,7 @@ def setup(hass, config, session):
 
         auth_url = session.get_authorize_url()
         if not auth_url:
+            _LOGGER.warning('Failed to retrieve authorization URL')
             return
 
         _LOGGER.debug('Got authorization URL %s', auth_url)
@@ -117,28 +117,30 @@ def setup(hass, config, session):
             res = setup(hass, config, session)
             if not res:
                 hass.async_add_job(configurator.notify_errors, instance,
-                                   "Unable to connect.")
+                                   'Unable to connect.')
                 return
 
             @asyncio.coroutine
             def success():
                 """Set up was successful."""
-                if not save_config(
-                        {host or DOMAIN: {
-                            CONF_TOKEN: access_token,
-                        }}):
-                    _LOGGER.error("Failed to save configuration file")
+                res = save_config(
+                    {host : {CONF_TOKEN: session.access_token }} if host else
+                    {DOMAIN: {CONF_TOKEN: session.access_token,
+                              CONF_TOKEN_SECRET: session.access_token_secret }})
+                if not res:
+                    _LOGGER.warning('Failed to save configuration file %s', config_filename)
                 hass.async_add_job(configurator.request_done, instance)
 
             hass.async_add_job(success)
 
-        hass.data[KEY_CONFIG][host] = configurator.request_config(
+        instance = hass.data[KEY_CONFIG][host or DOMAIN] = configurator.request_config(
             'TelldusLive ({})'.format('LocalAPI' if host else 'Cloud service'),
             configuration_callback,
             description=('To link your TelldusLive account, '
-                         'click the link, login, and authorize {}. Then click Confirm button.'.format(PROJECT_NAME)),
+                         'click the link, login, and authorize {}. '
+                         'Then click the Confirm button.'.format(PROJECT_NAME)),
             submit_caption='Confirm',
-            link_name="Link TelldusLive account",
+            link_name='Link TelldusLive account',
             link_url=auth_url,
             entity_picture='/static/images/logo_tellduslive.png',
         )
@@ -155,12 +157,11 @@ def setup(hass, config, session):
             hass.async_add_job(request_configuration)
             return
 
-        # Configure local API access with optional cloud service
-        file_config = load_config()
-        if file_config:
-            file_host, _ = file_config.popitem()
-            if file_host == host:
-                return
+        # Ignore any known devices
+        file_host, _ = load_config().popitem()
+        if file_host == host:
+            _LOGGER.debug('Discovered already known device: %s', host)
+            return
 
         # Offer configuration of both live and local API
         hass.async_add_job(request_configuration)
@@ -168,44 +169,45 @@ def setup(hass, config, session):
 
     discovery.async_listen(hass, SERVICE_TELLDUSLIVE, tellstick_discovered)
 
-    host = None
-    token = None
-    # get config from tellduslive.conf
-    file_config = load_config()
-    # Via discovery
-    if local is not None:
-        # Parse discovery data
-        host = local[CONF_HOST]
-        token = local[CONF_TOKEN]
-        _LOGGER.info("Discovered TelldusLive controller: %s", host)
-    elif file_config and oauth is None:  # Test oauth so we don't overwrite user settings from file.
-        # Setup a configured TellStick
-        host, host_config = file_config.popitem()
-        if host == DOMAIN:  # We have a tellduslive.conf entry
-            host = None
-            oauth = host_config
-        else:
-            token = host_config[CONF_TOKEN]
+    conf = load_config()
 
-    cnf = config.get(DOMAIN, {})
-    cnf_live = all((cnf.get(CONF_PUBLIC_KEY) is None,
-                    cnf.get(CONF_PRIVATE_KEY) is None,
-                    cnf.get(CONF_TOKEN) is None,
-                    cnf.get(CONF_TOKEN_SECRET) is None))
-    if host is None and oauth is None and cnf_live:
-        if cnf_live:
-            _LOGGER.info("Configure TelldusLive")
-            hass.async_add_job(request_configuration)
+    if session:
+        # Already configured by configurator
+        _LOGGER.debug('Already configured by configurator')
+        pass
+    elif all(key in config.get(DOMAIN, {}) for key in [
+            # Can we get voiuptous to do this?
+            # i.e. have a group of configuration items that
+            # are optional, but if any is present, all have to be
+            CONF_PUBLIC_KEY,
+            CONF_PRIVATE_KEY,
+            CONF_TOKEN,
+            CONF_TOKEN_SECRET]):
+        # Backwards compatible configuration with developer keys
+        _LOGGER.warning('Old configuration format detected. '
+                        'Please consider removing developer keys '
+                        'from configuration and instead'
+                        'authenticate via user interface.')
+        session = LiveSession(**config[DOMAIN])
+    elif CONF_HOST in conf:
+        # Local API already configured
+        _LOGGER.debug('Using already configured Local API')
+        session = LocalAPISession(**conf[CONF_HOST])
+    elif DOMAIN in conf:
+        # Cloud API already configured
+        _LOGGER.debug('Using already configured cloud live API')
+        session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY, **conf[DOMAIN])
+    else:
+        # Empty tellduslive entry, configure it as cloud service
+        _LOGGER.info('Needs TelldusLive cloud service configuration')
+        hass.async_add_job(request_configuration)
         return True
 
-    client = TelldusLiveClient(hass, config, host, token, oauth)
+    client = TelldusLiveClient(hass, config, session)
 
     if not client.validate_session():
         _LOGGER.error(
-            "Authentication Error: Please make sure you have configured your "
-            "keys that can be acquired from "
-            "https://api.telldus.com/keys/index")
-
+            'Authentication Error')
         return False
 
     hass.data[DOMAIN] = client
@@ -218,7 +220,7 @@ def setup(hass, config, session):
 class TelldusLiveClient(object):
     """Get the latest data and update the states."""
 
-    def __init__(self, hass, config, host=None, token=None, oauth=None):
+    def __init__(self, hass, config, session):
         """Initialize the Tellus data object."""
         from tellduslive import Client
 
@@ -226,38 +228,14 @@ class TelldusLiveClient(object):
 
         self._hass = hass
         self._config = config
-        self._host = host
 
-        if host is not None:
-            public_key = None
-            private_key = None
-            token_secret = None
-        elif oauth is not None:
-            public_key = oauth[CONF_PUBLIC_KEY]
-            private_key = oauth[CONF_PRIVATE_KEY]
-            token = oauth[CONF_TOKEN]
-            token_secret = oauth[CONF_TOKEN_SECRET]
-        else:
-            public_key = config[DOMAIN].get(CONF_PUBLIC_KEY)
-            private_key = config[DOMAIN].get(CONF_PRIVATE_KEY)
-            token = config[DOMAIN].get(CONF_TOKEN)
-            token_secret = config[DOMAIN].get(CONF_TOKEN_SECRET)
-
-        self._interval = config.get(DOMAIN, {}).get(CONF_UPDATE_INTERVAL)
-        if self._interval is None:
-            self._interval = DEFAULT_UPDATE_INTERVAL
+        self._interval = config.get(DOMAIN, {}).get(
+            CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
         _LOGGER.debug('Update interval %s', self._interval)
-
-        self._client = Client(public_key,
-                              private_key,
-                              token,
-                              token_secret,
-                              host)
+        self._client = Client(session)
 
     def validate_session(self):
         """Make a request to see if the session is valid."""
-        if self._host is not None:
-            return self._client.refresh_local_token()  # TODO, add timer so the token will be renewed before it expires.
         response = self._client.request_user()
         return response and 'email' in response
 
