@@ -62,6 +62,8 @@ ATTR_LAST_UPDATED = 'time_last_updated'
 def setup(hass, config, session):
     """Set up the Telldus Live component."""
 
+    from tellduslive import Client, LocalAPISession, LiveSession
+    
     config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
 
     def save_config(config=None):
@@ -98,7 +100,6 @@ def setup(hass, config, session):
             'local client: {}'.format(host) if host else
             'cloud service'))
 
-        from tellduslive import LocalAPISession, LiveSession
         if host:
             session = LocalAPISession(host=host, app=PROJECT_NAME)
         else:
