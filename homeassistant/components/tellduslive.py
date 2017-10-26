@@ -62,7 +62,7 @@ ATTR_LAST_UPDATED = 'time_last_updated'
 def setup(hass, config, session):
     """Set up the Telldus Live component."""
 
-    from tellduslive import Client, LocalAPISession, LiveSession
+    from tellduslive import LocalAPISession, LiveSession
     
     config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
 
