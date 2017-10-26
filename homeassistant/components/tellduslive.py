@@ -111,7 +111,7 @@ def request_configuration(hass, config, host=None):
 def setup(hass, config, local=None, oauth=None):
     """Set up the Telldus Live component."""
 
-    def config_from_file(hass, config=None):
+    def config_from_file(config=None):
         """Small configuration file management function (from media_player/plex.py)."""
         filename = hass.config.path(TELLLDUS_CONFIG_FILE)
         if config:
