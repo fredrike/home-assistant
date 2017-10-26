@@ -161,6 +161,8 @@ def setup(hass, config, session):
             file_host, _ = file_config.popitem()
             if file_host == host:
                 return
+
+        # Offer configuration of both live and local API
         hass.async_add_job(request_configuration)
         hass.async_add_job(request_configuration, host)
 
