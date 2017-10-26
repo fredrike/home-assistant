@@ -137,7 +137,7 @@ def setup(hass, config, local=None, oauth=None):
             return  # Tellstick already configured
         host, device = info
         if not any(x in device for x in LOCAL_API_DEVICES):
-            hass.async_add_job(request_configuration, hass, config)
+            hass.async_add_job(request_configuration)
             return
 
         file_config = load_config()
@@ -145,8 +145,8 @@ def setup(hass, config, local=None, oauth=None):
             file_host, _ = file_config.popitem()
             if file_host == host:
                 return
-        hass.async_add_job(request_configuration, hass, config)
-        hass.async_add_job(request_configuration, hass, config, host)
+        hass.async_add_job(request_configuration)
+        hass.async_add_job(request_configuration, host)
 
     discovery.async_listen(hass, SERVICE_TELLDUSLIVE, tellstick_discovered)
 
@@ -177,7 +177,7 @@ def setup(hass, config, local=None, oauth=None):
     if host is None and oauth is None and cnf_live:
         if cnf_live:
             _LOGGER.info("Configure TelldusLive")
-            hass.async_add_job(request_configuration, hass, config)
+            hass.async_add_job(request_configuration)
         return True
 
     client = TelldusLiveClient(hass, config, host, token, oauth)
