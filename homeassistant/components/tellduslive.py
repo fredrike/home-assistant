@@ -11,7 +11,7 @@ import asyncio
 import logging
 
 from homeassistant.const import (
-    ATTR_BATTERY_LEVEL, DEVICE_DEFAULT_NAME)
+    ATTR_BATTERY_LEVEL, DEVICE_DEFAULT_NAME, PROJECT_NAME)
 from homeassistant.helpers import discovery
 from homeassistant.components.discovery import SERVICE_TELLDUSLIVE
 import homeassistant.helpers.config_validation as cv
@@ -96,7 +96,7 @@ def setup(hass, config, local=None, oauth=None):
             'cloud service'))
 
         from tellduslive import Client
-        auth_url, request_token = Client.get_authorize_url(host, app='HA')
+        auth_url, request_token = Client.get_authorize_url(host, app=PROJECT_NAME)
         if not auth_url:
             return
 
