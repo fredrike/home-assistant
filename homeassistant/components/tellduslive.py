@@ -35,7 +35,6 @@ CONF_TOKEN_SECRET = 'token_secret'
 CONF_HOST = 'host'
 CONF_UPDATE_INTERVAL = 'update_interval'
 
-LIVE_KEY_URL = "http://api.telldus.com/keys/index"
 LOCAL_API_DEVICES = ['TellstickZnet', 'TellstickNetV2']
 
 MIN_UPDATE_INTERVAL = timedelta(seconds=5)
@@ -132,76 +131,6 @@ def request_local_configuration(hass, config, host):
         link_url=auth_url,
         entity_picture='/static/images/logo_tellduslive.png',
     )
-
-
-def request_live_configuration(hass, config, host):
-    """Request TelldusLive authorized."""
-    logger = logging.getLogger(__name__)
-
-    configurator = hass.components.configurator
-    hass.data.setdefault(KEY_CONFIG, {})
-    instance = hass.data[KEY_CONFIG].get(DOMAIN)
-    # Configuration already in progress
-    if instance:
-        return
-
-    logger.info("Found TelldusLive client: %s" % host)
-
-    def configuration_callback(callback_data):
-        """Handle the submitted configuration."""
-        res = setup(hass, config, oauth={
-            CONF_PUBLIC_KEY: callback_data.get(CONF_PUBLIC_KEY),
-            CONF_PRIVATE_KEY: callback_data.get(CONF_PRIVATE_KEY),
-            CONF_TOKEN: callback_data.get(CONF_TOKEN),
-            CONF_TOKEN_SECRET: callback_data.get(CONF_TOKEN_SECRET)})
-        if not res:
-            hass.async_add_job(configurator.notify_errors, instance,
-                               "Unable to connect.")
-            return
-
-        @asyncio.coroutine
-        def success():
-            """Set up was successful."""
-            # Save config
-            if not config_from_file(
-                    hass.config.path(TELLLDUS_CONFIG_FILE), {DOMAIN: {
-                        CONF_PUBLIC_KEY: callback_data.get(CONF_PUBLIC_KEY),
-                        CONF_PRIVATE_KEY: callback_data.get(CONF_PRIVATE_KEY),
-                        CONF_TOKEN: callback_data.get(CONF_TOKEN),
-                        CONF_TOKEN_SECRET: callback_data.get(CONF_TOKEN_SECRET),
-                    }}):
-                _LOGGER.error("Failed to save configuration file")
-            hass.async_add_job(configurator.request_done, instance)
-
-        hass.async_add_job(success)
-
-    hass.data[KEY_CONFIG][DOMAIN] = configurator.request_config(
-        "TelldusLive",
-        configuration_callback,
-        description=('To link your TelldusLive account',
-                    ' click the link, login, and fill the resulting keys below:'),
-        submit_caption='Submit',
-        link_name="Generate TelldusLive keys",
-        link_url=LIVE_KEY_URL,
-        entity_picture='/static/images/logo_tellduslive.png',
-        fields=[{
-            'id': CONF_PUBLIC_KEY,
-            'name': 'Public key',
-            'type': ''
-        }, {
-            'id': CONF_PRIVATE_KEY,
-            'name': 'Private key',
-            'type': ''
-        }, {
-            'id': CONF_TOKEN,
-            'name': 'Token',
-            'type': ''
-        }, {
-            'id': CONF_TOKEN_SECRET,
-            'name': 'Token secret',
-            'type': ''
-        },
-        ])
 
 
 def setup(hass, config, local=None, oauth=None):
