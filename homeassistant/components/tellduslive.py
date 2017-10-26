@@ -124,7 +124,7 @@ def setup(hass, config, local=None, oauth=None):
             hass.async_add_job(success)
 
         hass.data[KEY_CONFIG][host] = configurator.request_config(
-            "TelldusLive - LocalAPI",
+            'TelldusLive ({})'.format('LocalAPI' if host else 'Cloud service'),
             configuration_callback,
             description=('To link your TelldusLive account ',
                         'click the link, login, and authorize:'),
