@@ -87,8 +87,8 @@ def request_configuration(hass, config, host=None):
         def success():
             """Set up was successful."""
             # Save config
-            if not config_from_file(
-                    hass, {host: {
+            if not load_config(
+                    {host: {
                         CONF_TOKEN: access_token,
                     }}):
                 _LOGGER.error("Failed to save configuration file")
@@ -141,7 +141,7 @@ def setup(hass, config, local=None, oauth=None):
             hass.async_add_job(request_configuration, hass, config)
             return
 
-        file_config = config_from_file(hass)
+        file_config = load_config()
         if file_config:
             file_host, _ = file_config.popitem()
             if file_host == host:
@@ -154,7 +154,7 @@ def setup(hass, config, local=None, oauth=None):
     host = None
     token = None
     # get config from tellduslive.conf
-    file_config = config_from_file(hass)
+    file_config = load_config()
     # Via discovery
     if local is not None:
         # Parse discovery data
