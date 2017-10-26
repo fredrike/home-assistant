@@ -94,6 +94,7 @@ def setup(hass, config, local=None, oauth=None):
         _LOGGER.info('Configuring TelldusLive {}'.format(
             'local client: {}'.format(host) if host else
             'cloud service'))
+
         from tellduslive import Client
         auth_url, request_token = Client.get_authorize_url(host, app='HA')
         if not auth_url:
