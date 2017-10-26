@@ -123,7 +123,6 @@ def setup(hass, config, session):
             @asyncio.coroutine
             def success():
                 """Set up was successful."""
-                # Save config
                 if not save_config(
                         {host or DOMAIN: {
                             CONF_TOKEN: access_token,
@@ -147,7 +146,7 @@ def setup(hass, config, session):
     def tellstick_discovered(service, info):
         """Run when a Tellstick is discovered."""
         if DOMAIN in hass.data:
-            return  # Tellstick already configured
+            return  # Already configured
         host, device = info
         if not any(x in device for x in LOCAL_API_DEVICES):
             hass.async_add_job(request_configuration)
