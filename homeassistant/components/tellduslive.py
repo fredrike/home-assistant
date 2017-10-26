@@ -59,7 +59,7 @@ CONFIG_SCHEMA = vol.Schema({
 ATTR_LAST_UPDATED = 'time_last_updated'
 
 
-def setup(hass, config, local=None, oauth=None):
+def setup(hass, config, session):
     """Set up the Telldus Live component."""
 
     config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
@@ -113,7 +113,7 @@ def setup(hass, config, local=None, oauth=None):
         def configuration_callback(callback_data):
             """Handle the submitted configuration."""
             session.authorize()
-            res = setup(hass, config, local={CONF_HOST: host, CONF_TOKEN: access_token})
+            res = setup(hass, config, session)
             if not res:
                 hass.async_add_job(configurator.notify_errors, instance,
                                    "Unable to connect.")
