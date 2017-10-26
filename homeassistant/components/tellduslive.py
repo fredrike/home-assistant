@@ -36,6 +36,9 @@ CONF_TOKEN_SECRET = 'token_secret'
 CONF_HOST = 'host'
 CONF_UPDATE_INTERVAL = 'update_interval'
 
+PUBLIC_KEY='THUPUNECH5YEQA3RE6UYUPRUZ2DUGUGA'
+NOT_SO_PRIVATE_KEY='PHES7U2RADREWAFEBUSTUBAWRASWUTUS'
+
 LOCAL_API_DEVICES = ['TellstickZnet', 'TellstickNetV2']
 
 MIN_UPDATE_INTERVAL = timedelta(seconds=5)
@@ -95,8 +98,13 @@ def setup(hass, config, local=None, oauth=None):
             'local client: {}'.format(host) if host else
             'cloud service'))
 
-        from tellduslive import Client
-        auth_url, request_token = Client.get_authorize_url(host, app=PROJECT_NAME)
+        from tellduslive import LocalAPISession, LiveSession
+        if host:
+            session = LocalAPISession(host=host, app=PROJECT_NAME)
+        else:
+            session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY)
+
+        auth_url = session.get_authorize_url()
         if not auth_url:
             return
 
