@@ -56,58 +56,6 @@ CONFIG_SCHEMA = vol.Schema({
 ATTR_LAST_UPDATED = 'time_last_updated'
 
 
-def request_configuration(hass, config, host=None):
-    """Request TelldusLive authorized."""
-
-    configurator = hass.components.configurator
-    hass.data.setdefault(KEY_CONFIG, {})
-    instance = hass.data[KEY_CONFIG].get(host)
-
-    # Configuration already in progress
-    if instance:
-        return
-
-    _LOGGER.info("Found TelldusLive local client: %s" % host)
-    from tellduslive import Client
-    auth_url, request_token = Client.get_authorize_url(host, app='HA')
-    if not auth_url:
-        return
-
-    def configuration_callback(callback_data):
-        """Handle the submitted configuration."""
-        from tellduslive import Client
-        access_token = Client.authorize_local_api(host, request_token)
-        res = setup(hass, config, local={CONF_HOST: host, CONF_TOKEN: access_token})
-        if not res:
-            hass.async_add_job(configurator.notify_errors, instance,
-                               "Unable to connect.")
-            return
-
-        @asyncio.coroutine
-        def success():
-            """Set up was successful."""
-            # Save config
-            if not load_config(
-                    {host: {
-                        CONF_TOKEN: access_token,
-                    }}):
-                _LOGGER.error("Failed to save configuration file")
-            hass.async_add_job(configurator.request_done, instance)
-
-        hass.async_add_job(success)
-
-    hass.data[KEY_CONFIG][host] = configurator.request_config(
-        "TelldusLive - LocalAPI",
-        configuration_callback,
-        description=('To link your TelldusLive account ',
-                    'click the link, login, and authorize:'),
-        submit_caption='I authorized successfully',
-        link_name="Link TelldusLive account",
-        link_url=auth_url,
-        entity_picture='/static/images/logo_tellduslive.png',
-    )
-
-
 def setup(hass, config, local=None, oauth=None):
     """Set up the Telldus Live component."""
 
@@ -131,6 +79,57 @@ def setup(hass, config, local=None, oauth=None):
                 return json.loads(f.read())
         except (ValueError, IOError) as error:
             _LOGGER.error("Reading config file failed: %s", error)
+
+    def request_configuration(hass, config, host=None):
+        """Request TelldusLive authorized."""
+
+        configurator = hass.components.configurator
+        hass.data.setdefault(KEY_CONFIG, {})
+        instance = hass.data[KEY_CONFIG].get(host)
+
+        # Configuration already in progress
+        if instance:
+            return
+
+        _LOGGER.info("Found TelldusLive local client: %s" % host)
+        from tellduslive import Client
+        auth_url, request_token = Client.get_authorize_url(host, app='HA')
+        if not auth_url:
+            return
+
+        def configuration_callback(callback_data):
+            """Handle the submitted configuration."""
+            from tellduslive import Client
+            access_token = Client.authorize_local_api(host, request_token)
+            res = setup(hass, config, local={CONF_HOST: host, CONF_TOKEN: access_token})
+            if not res:
+                hass.async_add_job(configurator.notify_errors, instance,
+                                   "Unable to connect.")
+                return
+
+            @asyncio.coroutine
+            def success():
+                """Set up was successful."""
+                # Save config
+                if not load_config(
+                        {host: {
+                            CONF_TOKEN: access_token,
+                        }}):
+                    _LOGGER.error("Failed to save configuration file")
+                hass.async_add_job(configurator.request_done, instance)
+
+            hass.async_add_job(success)
+
+        hass.data[KEY_CONFIG][host] = configurator.request_config(
+            "TelldusLive - LocalAPI",
+            configuration_callback,
+            description=('To link your TelldusLive account ',
+                        'click the link, login, and authorize:'),
+            submit_caption='I authorized successfully',
+            link_name="Link TelldusLive account",
+            link_url=auth_url,
+            entity_picture='/static/images/logo_tellduslive.png',
+        )
 
     def tellstick_discovered(service, info):
         """Run when a Tellstick is discovered."""
