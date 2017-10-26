@@ -56,32 +56,6 @@ CONFIG_SCHEMA = vol.Schema({
 ATTR_LAST_UPDATED = 'time_last_updated'
 
 
-def config_from_file(hass, config=None):
-    """Small configuration file management function (from media_player/plex.py)."""
-    filename = hass.config.path(TELLLDUS_CONFIG_FILE)
-    if config:
-        # We're writing configuration
-        try:
-            with open(filename, 'w') as fdesc:
-                fdesc.write(json.dumps(config))
-        except IOError as error:
-            _LOGGER.error("Saving config file failed: %s", error)
-            return False
-        return True
-    else:
-        # We're reading config
-        if os.path.isfile(filename):
-            try:
-                with open(filename, 'r') as fdesc:
-                    return json.loads(fdesc.read())
-            except (ValueError, IOError) as error:
-                _LOGGER.error("Reading config file failed: %s", error)
-                # This won't work yet
-                return False
-        else:
-            return {}
-
-
 def request_configuration(hass, config, host=None):
     """Request TelldusLive authorized."""
 
@@ -136,6 +110,31 @@ def request_configuration(hass, config, host=None):
 
 def setup(hass, config, local=None, oauth=None):
     """Set up the Telldus Live component."""
+
+    def config_from_file(hass, config=None):
+        """Small configuration file management function (from media_player/plex.py)."""
+        filename = hass.config.path(TELLLDUS_CONFIG_FILE)
+        if config:
+            # We're writing configuration
+            try:
+                with open(filename, 'w') as fdesc:
+                    fdesc.write(json.dumps(config))
+            except IOError as error:
+                _LOGGER.error("Saving config file failed: %s", error)
+                return False
+            return True
+        else:
+            # We're reading config
+            if os.path.isfile(filename):
+                try:
+                    with open(filename, 'r') as fdesc:
+                        return json.loads(fdesc.read())
+                except (ValueError, IOError) as error:
+                    _LOGGER.error("Reading config file failed: %s", error)
+                    # This won't work yet
+                    return False
+            else:
+                return {}
 
     def tellstick_discovered(service, info):
         """Run when a Tellstick is discovered."""
