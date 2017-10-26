@@ -91,7 +91,7 @@ def setup(hass, config, local=None, oauth=None):
         if instance:
             return
 
-        _LOGGER.info("Configuring TelldusLive local client: %s" % host)
+        _LOGGER.info('Configuring TelldusLive local client: {}'.format(host))
         from tellduslive import Client
         auth_url, request_token = Client.get_authorize_url(host, app='HA')
         if not auth_url:
