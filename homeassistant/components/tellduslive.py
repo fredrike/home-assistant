@@ -86,7 +86,7 @@ def setup(hass, config, session):
             _LOGGER.error("Reading config file failed: %s", error)
 
     def request_configuration(host=None):
-        """Request TelldusLive authorized."""
+        """Request TelldusLive authorization."""
 
         configurator = hass.components.configurator
         hass.data.setdefault(KEY_CONFIG, {})
@@ -124,7 +124,7 @@ def setup(hass, config, session):
             def success():
                 """Set up was successful."""
                 # Save config
-                if not load_config(
+                if not save_config(
                         {host or DOMAIN: {
                             CONF_TOKEN: access_token,
                         }}):
