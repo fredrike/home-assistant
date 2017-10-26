@@ -118,23 +118,19 @@ def setup(hass, config, local=None, oauth=None):
         try:
             with open(config_filename, 'w') as fdesc:
                 fdesc.write(json.dumps(config))
+            return True
         except IOError as error:
             _LOGGER.error("Saving config file failed: %s", error)
-            return False
-        return True
-
+ 
     def load_config():
         """Load configuration:"""
-        if os.path.isfile(config_filename):
-            try:
-                with open(config_filename, 'r') as fdesc:
-                    return json.loads(fdesc.read())
-            except (ValueError, IOError) as error:
-                _LOGGER.error("Reading config file failed: %s", error)
-                # This won't work yet
-                return False
-        else:
+        if not os.path.isfile(config_filename):
             return {}
+        try:
+            with open(config_filename, 'r') as fdesc:
+                return json.loads(fdesc.read())
+        except (ValueError, IOError) as error:
+            _LOGGER.error("Reading config file failed: %s", error)
 
     def tellstick_discovered(service, info):
         """Run when a Tellstick is discovered."""
