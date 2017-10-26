@@ -22,7 +22,7 @@ import voluptuous as vol
 
 DOMAIN = 'tellduslive'
 
-REQUIREMENTS = ['tellduslive==0.5.0']
+REQUIREMENTS = ['tellduslive==0.6.0']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def setup(hass, config, session=None):
         if host:
             session = LocalAPISession(host=host, app=PROJECT_NAME)
         else:
-            session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY)
+            session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY, app=PROJECT_NAME)
 
         auth_url = session.get_authorize_url()
         if not auth_url:
@@ -188,7 +188,7 @@ def setup(hass, config, session=None):
                         'Please consider removing developer keys '
                         'from configuration and instead'
                         'authenticate via user interface.')
-        session = LiveSession(**config[DOMAIN])
+        session = LiveSession(**config[DOMAIN], app=PROJECT_NAME)
     elif CONF_HOST in conf:
         # Local API already configured
         _LOGGER.debug('Using already configured Local API')
@@ -196,7 +196,7 @@ def setup(hass, config, session=None):
     elif DOMAIN in conf:
         # Cloud API already configured
         _LOGGER.debug('Using already configured cloud live API')
-        session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY, **conf[DOMAIN])
+        session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY, app=PROJECT_NAME, **conf[DOMAIN])
     else:
         # Empty tellduslive entry, configure it as cloud service
         _LOGGER.info('Needs TelldusLive cloud service configuration')
