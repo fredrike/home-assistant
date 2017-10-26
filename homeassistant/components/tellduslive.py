@@ -111,13 +111,14 @@ def request_configuration(hass, config, host=None):
 def setup(hass, config, local=None, oauth=None):
     """Set up the Telldus Live component."""
 
+    config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
+
     def config_from_file(config=None):
         """Small configuration file management function (from media_player/plex.py)."""
-        filename = hass.config.path(TELLLDUS_CONFIG_FILE)
         if config:
             # We're writing configuration
             try:
-                with open(filename, 'w') as fdesc:
+                with open(config_filename, 'w') as fdesc:
                     fdesc.write(json.dumps(config))
             except IOError as error:
                 _LOGGER.error("Saving config file failed: %s", error)
@@ -125,9 +126,9 @@ def setup(hass, config, local=None, oauth=None):
             return True
         else:
             # We're reading config
-            if os.path.isfile(filename):
+            if os.path.isfile(config_filename):
                 try:
-                    with open(filename, 'r') as fdesc:
+                    with open(config_filename, 'r') as fdesc:
                         return json.loads(fdesc.read())
                 except (ValueError, IOError) as error:
                     _LOGGER.error("Reading config file failed: %s", error)
