@@ -80,7 +80,7 @@ def config_from_file(filename, config=None):
             return {}
 
 
-def request_local_configuration(hass, config, host):
+def request_configuration(hass, config, host=None):
     """Request TelldusLive authorized."""
     logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ def setup(hass, config, local=None, oauth=None):
             return  # Tellstick already configured
         host, device = info[0], info[1]
         if not any(x in device for x in LOCAL_API_DEVICES):
-            hass.async_add_job(request_live_configuration, hass, config, host)
+            hass.async_add_job(request_configuration, hass, config)
             return
 
         file_config = config_from_file(hass.config.path(TELLLDUS_CONFIG_FILE))
@@ -150,8 +150,8 @@ def setup(hass, config, local=None, oauth=None):
             file_host, _ = file_config.popitem()
             if file_host == host:
                 return
-        hass.async_add_job(request_live_configuration, hass, config, host)
-        hass.async_add_job(request_local_configuration, hass, config, host)
+        hass.async_add_job(request_configuration, hass, config)
+        hass.async_add_job(request_configuration, hass, config, host)
 
     discovery.async_listen(hass, SERVICE_TELLDUSLIVE, tellstick_discovered)
 
@@ -182,7 +182,7 @@ def setup(hass, config, local=None, oauth=None):
     if host is None and oauth is None and cnf_live:
         if cnf_live:
             _LOGGER.info("Configure TelldusLive")
-            hass.async_add_job(request_live_configuration, hass, config, DOMAIN)
+            hass.async_add_job(request_configuration, hass, config)
         return True
 
     client = TelldusLiveClient(hass, config, host, token, oauth)
