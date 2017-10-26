@@ -28,6 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 
 TELLLDUS_CONFIG_FILE = 'tellduslive.conf'
 KEY_CONFIG = 'tellduslive_config'
+
 CONF_PUBLIC_KEY = 'public_key'
 CONF_PRIVATE_KEY = 'private_key'
 CONF_TOKEN = 'token'
