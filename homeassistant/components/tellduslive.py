@@ -80,7 +80,7 @@ def setup(hass, config, local=None, oauth=None):
         except (ValueError, IOError) as error:
             _LOGGER.error("Reading config file failed: %s", error)
 
-    def request_configuration(hass, config, host=None):
+    def request_configuration(host=None):
         """Request TelldusLive authorized."""
 
         configurator = hass.components.configurator
