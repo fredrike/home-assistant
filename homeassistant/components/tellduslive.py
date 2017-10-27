@@ -180,22 +180,24 @@ def setup(hass, config, session=None):
 
     conf = load_config()
 
+    LEGACY_CONF_KEYS = {CONF_PUBLIC_KEY,
+                        CONF_PRIVATE_KEY,
+                        CONF_TOKEN,
+                        CONF_TOKEN_SECRET}
     if session:
         _LOGGER.debug('Configured by configurator')
-    elif all(key in config.get(DOMAIN, {}) for key in [
-            # Can we get voiuptous to do this?
-            # i.e. have a group of configuration items that
-            # are optional, but if any is present, all have to be
-            CONF_PUBLIC_KEY,
-            CONF_PRIVATE_KEY,
-            CONF_TOKEN,
-            CONF_TOKEN_SECRET]):
-        # Backwards compatible configuration with developer keys
+    elif all(key in config.get(DOMAIN, {}) for key in LEGACY_CONF_KEYS):
+        # Can we get voiuptous to do this?
+        # i.e. have a group of configuration items that
+        # are optional, but if any is present, all have to be.
         _LOGGER.warning('Old configuration format detected. '
                         'Please consider removing developer keys '
                         'from configuration and instead'
                         'authenticate via user interface.')
-        session = LiveSession(application=PROJECT_NAME, **config[DOMAIN])
+        session = LiveSession(application=PROJECT_NAME,
+                              **{key: val
+                                 for key, val in config[DOMAIN].items()
+                                 if key in LEGACY_CONF_KEYS})
     elif CONF_HOST in conf:
         _LOGGER.debug('Using Local API pre-configured by configurator')
         session = LocalAPISession(**conf[CONF_HOST])
