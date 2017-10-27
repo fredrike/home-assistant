@@ -37,7 +37,7 @@ CONF_UPDATE_INTERVAL = 'update_interval'
 PUBLIC_KEY = 'THUPUNECH5YEQA3RE6UYUPRUZ2DUGUGA'
 NOT_SO_PRIVATE_KEY = 'PHES7U2RADREWAFEBUSTUBAWRASWUTUS'
 
-LOCAL_API_DEVICES = ['TellstickZnet', 'TellstickNetV2']
+SUPPORTS_LOCAL_API = ['TellstickZnet', 'TellstickNetV2']
 
 MIN_UPDATE_INTERVAL = timedelta(seconds=5)
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=1)
@@ -161,7 +161,9 @@ def setup(hass, config, session=None):
 
         host, device = info
 
-        if not any(x in device for x in LOCAL_API_DEVICES):
+        supports_local_api = any(dev in device
+                                 for dev in SUPPORTS_LOCAL_API)
+        if not supports_local_api:
             # Configure the cloud service
             hass.async_add_job(request_configuration)
             return
