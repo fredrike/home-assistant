@@ -6,12 +6,12 @@ https://home-assistant.io/components/tellduslive/
 """
 import json
 from datetime import datetime, timedelta
-import os
 import asyncio
 import logging
 
 from homeassistant.const import (
-    ATTR_BATTERY_LEVEL, DEVICE_DEFAULT_NAME, PROJECT_NAME, CONF_TOKEN, CONF_HOST)
+    ATTR_BATTERY_LEVEL, DEVICE_DEFAULT_NAME,
+    PROJECT_NAME, CONF_TOKEN, CONF_HOST)
 from homeassistant.helpers import discovery
 from homeassistant.components.discovery import SERVICE_TELLDUSLIVE
 import homeassistant.helpers.config_validation as cv
@@ -34,8 +34,8 @@ CONF_PRIVATE_KEY = 'private_key'
 CONF_TOKEN_SECRET = 'token_secret'
 CONF_UPDATE_INTERVAL = 'update_interval'
 
-PUBLIC_KEY='THUPUNECH5YEQA3RE6UYUPRUZ2DUGUGA'
-NOT_SO_PRIVATE_KEY='PHES7U2RADREWAFEBUSTUBAWRASWUTUS'
+PUBLIC_KEY = 'THUPUNECH5YEQA3RE6UYUPRUZ2DUGUGA'
+NOT_SO_PRIVATE_KEY = 'PHES7U2RADREWAFEBUSTUBAWRASWUTUS'
 
 LOCAL_API_DEVICES = ['TellstickZnet', 'TellstickNetV2']
 
@@ -59,50 +59,54 @@ ATTR_LAST_UPDATED = 'time_last_updated'
 
 def setup(hass, config, session=None):
     """Set up the Telldus Live component."""
-
     from tellduslive import LocalAPISession, LiveSession
-    
+
     config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
 
     def save_config(config=None):
-        """Save configuration."""
+        """Save configurator configuration."""
         try:
-            with open(config_filename, 'w') as f:
-                f.write(json.dumps(config))
+            with open(config_filename, 'w') as fdesc:
+                fdesc.write(json.dumps(config))
             return True
-        except IOError as error:
-            _LOGGER.error("Saving config file %s failed: %s", config_filename, error)
- 
+        except OSError as error:
+            _LOGGER.error("Saving config file %s failed: %s",
+                          config_filename, error)
+
     def load_config():
-        """Load configuration:"""
+        """Load configurator configuration."""
         try:
-            with open(config_filename) as f:
-                return json.loads(f.read())
-        except (FileNotFoundError):
-            pass
+            with open(config_filename) as fdesc:
+                return json.loads(fdesc.read())
+        except FileNotFoundError:
+            _LOGGER.info('No previous configurator '
+                         'configuration found')
         except (ValueError, OSError) as error:
-            _LOGGER.warning("Reading config file %s failed: %s", config_filename, error)
+            _LOGGER.warning('Reading config file %s failed: %s',
+                            config_filename, error)
         return {}
 
     def request_configuration(host=None):
         """Request TelldusLive authorization."""
-
         configurator = hass.components.configurator
         hass.data.setdefault(KEY_CONFIG, {})
-        instance = hass.data[KEY_CONFIG].get(host or DOMAIN)
+        data_key = host or DOMAIN
+        instance = hass.data[KEY_CONFIG].get(data_key)
 
         # Configuration already in progress
         if instance:
             return
 
-        _LOGGER.info('Configuring TelldusLive {}'.format(
-            'local client: {}'.format(host) if host else
-            'cloud service'))
+        _LOGGER.info('Configuring TelldusLive %s',
+                     'local client: {}'.format(host) if host else
+                     'cloud service')
 
         if host:
-            session = LocalAPISession(host=host, application=PROJECT_NAME)
+            session = LocalAPISession(host=host,
+                                      application=PROJECT_NAME)
         else:
-            session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY, application=PROJECT_NAME)
+            session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY,
+                                  application=PROJECT_NAME)
 
         auth_url = session.get_authorize_url()
         if not auth_url:
@@ -113,6 +117,7 @@ def setup(hass, config, session=None):
 
         def configuration_callback(callback_data):
             """Handle the submitted configuration."""
+            nonlocal instance
             session.authorize()
             res = setup(hass, config, session)
             if not res:
@@ -124,26 +129,30 @@ def setup(hass, config, session=None):
             def success():
                 """Set up was successful."""
                 res = save_config(
-                    {host : {CONF_TOKEN: session.access_token }} if host else
+                    {host: {CONF_TOKEN: session.access_token}} if host else
                     {DOMAIN: {CONF_TOKEN: session.access_token,
-                              CONF_TOKEN_SECRET: session.access_token_secret }})
+                              CONF_TOKEN_SECRET: session.access_token_secret}})
                 if not res:
-                    _LOGGER.warning('Failed to save configuration file %s', config_filename)
+                    _LOGGER.warning('Failed to save configuration file %s',
+                                    config_filename)
                 hass.async_add_job(configurator.request_done, instance)
 
             hass.async_add_job(success)
 
-        instance = hass.data[KEY_CONFIG][host or DOMAIN] = configurator.request_config(
-            'TelldusLive ({})'.format('LocalAPI' if host else 'Cloud service'),
-            configuration_callback,
-            description=('To link your TelldusLive account, '
-                         'click the link, login, and authorize {}. '
-                         'Then click the Confirm button.'.format(PROJECT_NAME)),
-            submit_caption='Confirm',
-            link_name='Link TelldusLive account',
-            link_url=auth_url,
-            entity_picture='/static/images/logo_tellduslive.png',
-        )
+        instance = hass.data[KEY_CONFIG][data_key] = \
+            configurator.request_config(
+                'TelldusLive ({})'.format('LocalAPI' if host
+                                          else 'Cloud service'),
+                configuration_callback,
+                description=('To link your TelldusLive account, '
+                             'click the link, login, and authorize {}. '
+                             'Then click the Confirm button.'
+                             .format(PROJECT_NAME)),
+                submit_caption='Confirm',
+                link_name='Link TelldusLive account',
+                link_url=auth_url,
+                entity_picture='/static/images/logo_tellduslive.png',
+            )
 
     def tellstick_discovered(service, info):
         """Run when a Tellstick is discovered."""
@@ -172,9 +181,7 @@ def setup(hass, config, session=None):
     conf = load_config()
 
     if session:
-        # Already configured by configurator
-        _LOGGER.debug('Already configured by configurator')
-        pass
+        _LOGGER.debug('Configured by configurator')
     elif all(key in config.get(DOMAIN, {}) for key in [
             # Can we get voiuptous to do this?
             # i.e. have a group of configuration items that
@@ -190,16 +197,15 @@ def setup(hass, config, session=None):
                         'authenticate via user interface.')
         session = LiveSession(application=PROJECT_NAME, **config[DOMAIN])
     elif CONF_HOST in conf:
-        # Local API already configured
-        _LOGGER.debug('Using already configured Local API')
+        _LOGGER.debug('Using Local API pre-configured by configurator')
         session = LocalAPISession(**conf[CONF_HOST])
     elif DOMAIN in conf:
-        # Cloud API already configured
-        _LOGGER.debug('Using already configured cloud live API')
-        session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY, application=PROJECT_NAME, **conf[DOMAIN])
+        _LOGGER.debug('Using TelldusLive cloud service '
+                      'pre-configured by configurator')
+        session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY,
+                              application=PROJECT_NAME, **conf[DOMAIN])
     else:
-        # Empty tellduslive entry, configure it as cloud service
-        _LOGGER.info('Needs TelldusLive cloud service configuration')
+        _LOGGER.info('Requesting TelldusLive cloud service configuration')
         hass.async_add_job(request_configuration)
         return True
 
