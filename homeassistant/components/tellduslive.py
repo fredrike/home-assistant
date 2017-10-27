@@ -182,13 +182,13 @@ def setup(hass, config, session=None):
 
     conf = load_config()
 
-    LEGACY_CONF_KEYS = {CONF_PUBLIC_KEY,
+    legacy_conf_keys = {CONF_PUBLIC_KEY,
                         CONF_PRIVATE_KEY,
                         CONF_TOKEN,
                         CONF_TOKEN_SECRET}
     if session:
         _LOGGER.debug('Configured by configurator')
-    elif all(key in config.get(DOMAIN, {}) for key in LEGACY_CONF_KEYS):
+    elif all(key in config.get(DOMAIN, {}) for key in legacy_conf_keys):
         # Can we get voiuptous to do this?
         # i.e. have a group of configuration items that
         # are optional, but if any is present, all have to be.
@@ -199,7 +199,7 @@ def setup(hass, config, session=None):
         session = LiveSession(application=PROJECT_NAME,
                               **{key: val
                                  for key, val in config[DOMAIN].items()
-                                 if key in LEGACY_CONF_KEYS})
+                                 if key in legacy_conf_keys})
     elif CONF_HOST in conf:
         _LOGGER.debug('Using Local API pre-configured by configurator')
         session = LocalAPISession(**conf[CONF_HOST])
