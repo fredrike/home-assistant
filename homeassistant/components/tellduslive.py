@@ -22,7 +22,7 @@ import voluptuous as vol
 
 DOMAIN = 'tellduslive'
 
-REQUIREMENTS = ['tellduslive==0.7.0']
+REQUIREMENTS = ['tellduslive==0.7.1']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,8 +36,6 @@ CONF_UPDATE_INTERVAL = 'update_interval'
 
 PUBLIC_KEY = 'THUPUNECH5YEQA3RE6UYUPRUZ2DUGUGA'
 NOT_SO_PRIVATE_KEY = 'PHES7U2RADREWAFEBUSTUBAWRASWUTUS'
-
-SUPPORTS_LOCAL_API = ['TellstickZnet', 'TellstickNetV2']
 
 MIN_UPDATE_INTERVAL = timedelta(seconds=5)
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=1)
@@ -59,7 +57,7 @@ ATTR_LAST_UPDATED = 'time_last_updated'
 
 def setup(hass, config, client=None):
     """Set up the Telldus Live component."""
-    from tellduslive import Client
+    from tellduslive import Client, supports_local_api
     config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
 
     def save_config(config=None):
@@ -159,9 +157,7 @@ def setup(hass, config, client=None):
 
         host, device = info
 
-        supports_local_api = any(dev in device
-                                 for dev in SUPPORTS_LOCAL_API)
-        if not supports_local_api:
+        if not supports_local_api(device):
             # Configure the cloud service
             hass.async_add_job(request_configuration)
             return
