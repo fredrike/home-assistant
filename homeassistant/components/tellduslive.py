@@ -22,7 +22,7 @@ import voluptuous as vol
 
 DOMAIN = 'tellduslive'
 
-REQUIREMENTS = ['tellduslive==0.6.1']
+REQUIREMENTS = ['tellduslive==0.7.0']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,10 +57,9 @@ CONFIG_SCHEMA = vol.Schema({
 ATTR_LAST_UPDATED = 'time_last_updated'
 
 
-def setup(hass, config, session=None):
+def setup(hass, config, client=None):
     """Set up the Telldus Live component."""
-    from tellduslive import LocalAPISession, LiveSession
-
+    from tellduslive import Client
     config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
 
     def save_config(config=None):
@@ -88,6 +87,7 @@ def setup(hass, config, session=None):
 
     def request_configuration(host=None):
         """Request TelldusLive authorization."""
+        from tellduslive import Client
         configurator = hass.components.configurator
         hass.data.setdefault(KEY_CONFIG, {})
         data_key = host or DOMAIN
@@ -101,14 +101,12 @@ def setup(hass, config, session=None):
                      'local client: {}'.format(host) if host else
                      'cloud service')
 
-        if host:
-            session = LocalAPISession(host=host,
-                                      application=PROJECT_NAME)
-        else:
-            session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY,
-                                  application=PROJECT_NAME)
+        client = Client(public_key=PUBLIC_KEY,
+                        private_key=NOT_SO_PRIVATE_KEY,
+                        host=host,
+                        application=PROJECT_NAME)
 
-        auth_url = session.get_authorize_url()
+        auth_url = client.authorize_url
         if not auth_url:
             _LOGGER.warning('Failed to retrieve authorization URL')
             return
@@ -118,8 +116,8 @@ def setup(hass, config, session=None):
         def configuration_callback(callback_data):
             """Handle the submitted configuration."""
             nonlocal instance
-            session.authorize()
-            res = setup(hass, config, session)
+            client.authorize()
+            res = setup(hass, config, client)
             if not res:
                 hass.async_add_job(configurator.notify_errors, instance,
                                    'Unable to connect.')
@@ -129,9 +127,9 @@ def setup(hass, config, session=None):
             def success():
                 """Set up was successful."""
                 res = save_config(
-                    {host: {CONF_TOKEN: session.access_token}} if host else
-                    {DOMAIN: {CONF_TOKEN: session.access_token,
-                              CONF_TOKEN_SECRET: session.access_token_secret}})
+                    {host: {CONF_TOKEN: client.access_token}} if host else
+                    {DOMAIN: {CONF_TOKEN: client.access_token,
+                              CONF_TOKEN_SECRET: client.access_token_secret}})
                 if not res:
                     _LOGGER.warning('Failed to save configuration file %s',
                                     config_filename)
@@ -186,7 +184,7 @@ def setup(hass, config, session=None):
                         CONF_PRIVATE_KEY,
                         CONF_TOKEN,
                         CONF_TOKEN_SECRET}
-    if session:
+    if client:
         _LOGGER.debug('Configured by configurator')
     elif all(key in config.get(DOMAIN, {}) for key in legacy_conf_keys):
         # Can we get voiuptous to do this?
@@ -196,24 +194,24 @@ def setup(hass, config, session=None):
                         'Please consider removing developer keys '
                         'from configuration and instead'
                         'authenticate via user interface.')
-        session = LiveSession(application=PROJECT_NAME,
-                              **{key: val
-                                 for key, val in config[DOMAIN].items()
-                                 if key in legacy_conf_keys})
+        client = Client(application=PROJECT_NAME,
+                        **{key: val
+                           for key, val in config[DOMAIN].items()
+                           if key in legacy_conf_keys})
     elif CONF_HOST in conf:
         _LOGGER.debug('Using Local API pre-configured by configurator')
-        session = LocalAPISession(**conf[CONF_HOST])
+        client = Client(**conf[CONF_HOST])
     elif DOMAIN in conf:
         _LOGGER.debug('Using TelldusLive cloud service '
                       'pre-configured by configurator')
-        session = LiveSession(PUBLIC_KEY, NOT_SO_PRIVATE_KEY,
-                              application=PROJECT_NAME, **conf[DOMAIN])
+        client = Client(PUBLIC_KEY, NOT_SO_PRIVATE_KEY,
+                        application=PROJECT_NAME, **conf[DOMAIN])
     else:
         _LOGGER.info('Requesting TelldusLive cloud service configuration')
         hass.async_add_job(request_configuration)
         return True
 
-    client = TelldusLiveClient(hass, config, session)
+    client = TelldusLiveClient(hass, config, client)
 
     if not client.validate_session():
         _LOGGER.error(
@@ -230,7 +228,7 @@ def setup(hass, config, session=None):
 class TelldusLiveClient(object):
     """Get the latest data and update the states."""
 
-    def __init__(self, hass, config, session):
+    def __init__(self, hass, config, client):
         """Initialize the Tellus data object."""
         from tellduslive import Client
 
@@ -242,7 +240,7 @@ class TelldusLiveClient(object):
         self._interval = config.get(DOMAIN, {}).get(
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
         _LOGGER.debug('Update interval %s', self._interval)
-        self._client = Client(session)
+        self._client = client
 
     def validate_session(self):
         """Make a request to see if the session is valid."""
