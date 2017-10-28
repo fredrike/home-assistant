@@ -183,7 +183,7 @@ def setup(hass, config, client=None):
     if client:
         _LOGGER.debug('Configured by configurator')
     elif all(key in config.get(DOMAIN, {}) for key in legacy_conf_keys):
-        # Can we get voiuptous to do this?
+        # Can we get voiuptous to do this for us?
         # i.e. have a group of configuration items that
         # are optional, but if any is present, all have to be.
         _LOGGER.warning('Old configuration format detected. '
