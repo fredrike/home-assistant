@@ -85,7 +85,6 @@ def setup(hass, config, client=None):
 
     def request_configuration(host=None):
         """Request TelldusLive authorization."""
-        from tellduslive import Client
         configurator = hass.components.configurator
         hass.data.setdefault(KEY_CONFIG, {})
         data_key = host or DOMAIN
@@ -226,8 +225,6 @@ class TelldusLiveClient(object):
 
     def __init__(self, hass, config, client):
         """Initialize the Tellus data object."""
-        from tellduslive import Client
-
         self.entities = []
 
         self._hass = hass
