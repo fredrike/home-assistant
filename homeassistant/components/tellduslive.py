@@ -187,7 +187,7 @@ def setup(hass, config, client=None):
         # are optional, but if any is present, all have to be.
         _LOGGER.warning('Old configuration format detected. '
                         'Please consider removing developer keys '
-                        'from configuration and instead'
+                        'from configuration and instead '
                         'authenticate via user interface.')
         client = Client(application=PROJECT_NAME,
                         **{key: val
