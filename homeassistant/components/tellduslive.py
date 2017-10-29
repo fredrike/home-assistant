@@ -55,33 +55,34 @@ CONFIG_SCHEMA = vol.Schema({
 ATTR_LAST_UPDATED = 'time_last_updated'
 
 
+def save_config(filename, config=None):
+    """Save configurator configuration."""
+    try:
+        with open(filename, 'w') as fdesc:
+            fdesc.write(json.dumps(config))
+            return True
+    except OSError as error:
+        _LOGGER.error("Saving config file %s failed: %s",
+                      filename, error)
+
+def load_config(filename):
+    """Load configurator configuration."""
+    try:
+        with open(filename) as fdesc:
+            return json.loads(fdesc.read())
+    except FileNotFoundError:
+        _LOGGER.info('No previous configurator '
+                     'configuration found')
+    except (ValueError, OSError) as error:
+        _LOGGER.warning('Reading config file %s failed: %s',
+                        filename, error)
+    return {}
+
 def setup(hass, config, client=None):
     """Set up the Telldus Live component."""
     from tellduslive import Client, supports_local_api
     config_filename = hass.config.path(TELLLDUS_CONFIG_FILE)
-
-    def save_config(config=None):
-        """Save configurator configuration."""
-        try:
-            with open(config_filename, 'w') as fdesc:
-                fdesc.write(json.dumps(config))
-            return True
-        except OSError as error:
-            _LOGGER.error("Saving config file %s failed: %s",
-                          config_filename, error)
-
-    def load_config():
-        """Load configurator configuration."""
-        try:
-            with open(config_filename) as fdesc:
-                return json.loads(fdesc.read())
-        except FileNotFoundError:
-            _LOGGER.info('No previous configurator '
-                         'configuration found')
-        except (ValueError, OSError) as error:
-            _LOGGER.warning('Reading config file %s failed: %s',
-                            config_filename, error)
-        return {}
+    conf = load_config(config_filename)
 
     def request_configuration(host=None):
         """Request TelldusLive authorization."""
@@ -123,7 +124,7 @@ def setup(hass, config, client=None):
             @asyncio.coroutine
             def success():
                 """Set up was successful."""
-                res = save_config(
+                res = save_config(config_filename,
                     {host: {CONF_TOKEN: client.access_token}} if host else
                     {DOMAIN: {CONF_TOKEN: client.access_token,
                               CONF_TOKEN_SECRET: client.access_token_secret}})
@@ -162,8 +163,7 @@ def setup(hass, config, client=None):
             return
 
         # Ignore any known devices
-        file_host, _ = load_config().popitem()
-        if file_host == host:
+        if conf and host in conf:
             _LOGGER.debug('Discovered already known device: %s', host)
             return
 
@@ -172,8 +172,6 @@ def setup(hass, config, client=None):
         hass.async_add_job(request_configuration, host)
 
     discovery.async_listen(hass, SERVICE_TELLDUSLIVE, tellstick_discovered)
-
-    conf = load_config()
 
     legacy_conf_keys = {CONF_PUBLIC_KEY,
                         CONF_PRIVATE_KEY,
