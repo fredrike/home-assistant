@@ -187,7 +187,7 @@ def setup(hass, config, client=None):
                         CONF_TOKEN,
                         CONF_TOKEN_SECRET}
     if client:
-        _LOGGER.debug('Configured by configurator')
+        _LOGGER.debug('Continuing setup configured by configurator')
     elif all(key in config.get(DOMAIN, {}) for key in legacy_conf_keys):
         # Can we get voiuptous to do this for us?
         # i.e. have a group of configuration items that
