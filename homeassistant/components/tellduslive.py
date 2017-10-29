@@ -56,7 +56,7 @@ CONFIG_SCHEMA = vol.Schema({
 ATTR_LAST_UPDATED = 'time_last_updated'
 
 
-def save_config(filename, config=None):
+def save_config(filename, config):
     """Save configurator configuration."""
     try:
         with open(filename, 'w') as fdesc:
