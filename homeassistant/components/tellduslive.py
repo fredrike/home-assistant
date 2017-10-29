@@ -155,15 +155,21 @@ def setup(hass, config, client=None):
 
     def tellstick_discovered(service, info):
         """Run when a Tellstick is discovered."""
+        _LOGGER.info('Discovered tellstick device')
+
         if DOMAIN in hass.data:
-            return  # Already configured
+            _LOGGER.debug('Tellstick already configured')
+            return
 
         host, device = info
 
         if not supports_local_api(device):
+            _LOGGER.debug('Tellstick does not support local API')
             # Configure the cloud service
             hass.async_add_job(request_configuration)
             return
+
+        _LOGGER.debug('Tellstick does support local API')
 
         # Ignore any known devices
         if conf and host in conf:
