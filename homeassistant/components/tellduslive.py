@@ -206,21 +206,24 @@ def setup(hass, config, client=None):
         hass.async_add_job(request_configuration)
         return True
 
-    client = TelldusLiveClient(hass, config, client)
+    session = TelldusLiveSession(hass, config, client)
 
-    if not client.validate_session():
+    if not session.validate():
         _LOGGER.error(
             'Authentication Error')
         return False
 
-    hass.data[DOMAIN] = client
+    hass.data[DOMAIN] = session
 
-    client.update()
+    if client:
+        hass.async_add_job(session.update)
+    else:
+        hass.bus.listen(EVENT_HOMEASSISTANT_START, session.update)
 
     return True
 
 
-class TelldusLiveClient(object):
+class TelldusLiveSession(object):
     """Get the latest data and update the states."""
 
     def __init__(self, hass, config, client):
@@ -235,7 +238,7 @@ class TelldusLiveClient(object):
         _LOGGER.debug('Update interval %s', self._interval)
         self._client = client
 
-    def validate_session(self):
+    def validate(self):
         """Make a request to see if the session is valid."""
         response = self._client.request_user()
         return response and 'email' in response
