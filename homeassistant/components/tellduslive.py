@@ -124,11 +124,10 @@ def setup(hass, config, client=None):
             @asyncio.coroutine
             def success():
                 """Set up was successful."""
-                res = save_config(config_filename,
-                    {host: {CONF_TOKEN: client.access_token}} if host else
-                    {DOMAIN: {CONF_TOKEN: client.access_token,
-                              CONF_TOKEN_SECRET: client.access_token_secret}})
-                if not res:
+                conf.update({host: {CONF_TOKEN: client.access_token}} if host else
+                            {DOMAIN: {CONF_TOKEN: client.access_token,
+                                      CONF_TOKEN_SECRET: client.access_token_secret}})
+                if not save_config(config_filename, conf):
                     _LOGGER.warning('Failed to save configuration file %s',
                                     config_filename)
                 hass.async_add_job(configurator.request_done, instance)
