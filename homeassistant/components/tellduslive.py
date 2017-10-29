@@ -161,7 +161,7 @@ def setup(hass, config, client=None):
             _LOGGER.debug('Tellstick already configured')
             return
 
-        host, device = info
+        host, device = info[:2]
 
         if not supports_local_api(device):
             _LOGGER.debug('Tellstick does not support local API')
