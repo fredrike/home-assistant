@@ -11,7 +11,8 @@ import logging
 
 from homeassistant.const import (
     ATTR_BATTERY_LEVEL, DEVICE_DEFAULT_NAME,
-    PROJECT_NAME, CONF_TOKEN, CONF_HOST)
+    PROJECT_NAME, CONF_TOKEN, CONF_HOST,
+    EVENT_HOMEASSISTANT_START)
 from homeassistant.helpers import discovery
 from homeassistant.components.discovery import SERVICE_TELLDUSLIVE
 import homeassistant.helpers.config_validation as cv
@@ -65,6 +66,7 @@ def save_config(filename, config=None):
         _LOGGER.error("Saving config file %s failed: %s",
                       filename, error)
 
+
 def load_config(filename):
     """Load configurator configuration."""
     try:
@@ -77,6 +79,7 @@ def load_config(filename):
         _LOGGER.warning('Reading config file %s failed: %s',
                         filename, error)
     return {}
+
 
 def setup(hass, config, client=None):
     """Set up the Telldus Live component."""
@@ -124,9 +127,10 @@ def setup(hass, config, client=None):
             @asyncio.coroutine
             def success():
                 """Set up was successful."""
-                conf.update({host: {CONF_TOKEN: client.access_token}} if host else
-                            {DOMAIN: {CONF_TOKEN: client.access_token,
-                                      CONF_TOKEN_SECRET: client.access_token_secret}})
+                conf.update(
+                    {host: {CONF_TOKEN: client.access_token}} if host else
+                    {DOMAIN: {CONF_TOKEN: client.access_token,
+                              CONF_TOKEN_SECRET: client.access_token_secret}})
                 if not save_config(config_filename, conf):
                     _LOGGER.warning('Failed to save configuration file %s',
                                     config_filename)
