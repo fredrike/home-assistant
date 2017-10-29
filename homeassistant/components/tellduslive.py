@@ -208,9 +208,13 @@ def setup(hass, config, client=None):
                       'pre-configured by configurator')
         client = Client(PUBLIC_KEY, NOT_SO_PRIVATE_KEY,
                         application=PROJECT_NAME, **conf[DOMAIN])
-    else:
-        _LOGGER.info('Requesting TelldusLive cloud service configuration')
+    elif config.get(DOMAIN):
+        _LOGGER.info('Found entry in configuration.yaml. '
+                     'Requesting TelldusLive cloud service configuration')
         hass.async_add_job(request_configuration)
+        return True
+    else:
+        _LOGGER.info('Tellstick discovered, awaiting discovery callback')
         return True
 
     session = TelldusLiveSession(hass, config, client)
