@@ -250,8 +250,8 @@ class TelldusLiveSession(object):
         self._client = client
 
     def validate(self):
-        """Make a request to see if the session is valid."""
-        return self._client.update()
+        """Check to see if the session is valid."""
+        return self._client.is_authorized
 
     def update(self, *args):
         """Periodically poll the servers for current state."""
