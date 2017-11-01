@@ -128,7 +128,7 @@ def setup(hass, config, client=None):
             def success():
                 """Set up was successful."""
                 conf.update(
-                    {host: {CONF_TOKEN: client.access_token}} if host else
+                    {host: {CONF_HOST: host, CONF_TOKEN: client.access_token}} if host else
                     {DOMAIN: {CONF_TOKEN: client.access_token,
                               CONF_TOKEN_SECRET: client.access_token_secret}})
                 if not save_config(config_filename, conf):
@@ -200,9 +200,10 @@ def setup(hass, config, client=None):
                         **{key: val
                            for key, val in config[DOMAIN].items()
                            if key in legacy_conf_keys})
-    elif CONF_HOST in conf:
+    elif CONF_HOST in next(iter(conf.values())):
+        #  For now, only one local device is supported
         _LOGGER.debug('Using Local API pre-configured by configurator')
-        client = Client(**conf[CONF_HOST])
+        client = Client(**next(iter(conf.values())))
     elif DOMAIN in conf:
         _LOGGER.debug('Using TelldusLive cloud service '
                       'pre-configured by configurator')
