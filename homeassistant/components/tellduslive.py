@@ -127,7 +127,8 @@ def setup(hass, config, client=None):
             def success():
                 """Set up was successful."""
                 conf.update(
-                    {host: {CONF_HOST: host, CONF_TOKEN: client.access_token}} if host else
+                    {host: {CONF_HOST: host,
+                            CONF_TOKEN: client.access_token}} if host else
                     {DOMAIN: {CONF_TOKEN: client.access_token,
                               CONF_TOKEN_SECRET: client.access_token_secret}})
                 if not save_config(config_filename, conf):
