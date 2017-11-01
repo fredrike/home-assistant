@@ -92,10 +92,9 @@ def setup(hass, config, client=None):
         configurator = hass.components.configurator
         hass.data.setdefault(KEY_CONFIG, {})
         data_key = host or DOMAIN
-        instance = hass.data[KEY_CONFIG].get(data_key)
 
         # Configuration already in progress
-        if instance:
+        if hass.data[KEY_CONFIG].get(data_key):
             return
 
         _LOGGER.info('Configuring TelldusLive %s',
@@ -116,11 +115,11 @@ def setup(hass, config, client=None):
 
         def configuration_callback(callback_data):
             """Handle the submitted configuration."""
-            nonlocal instance
             client.authorize()
             res = setup(hass, config, client)
             if not res:
-                hass.async_add_job(configurator.notify_errors, instance,
+                hass.async_add_job(configurator.notify_errors,
+                                   hass.data[KEY_CONFIG].get(data_key),
                                    'Unable to connect.')
                 return
 
@@ -134,11 +133,12 @@ def setup(hass, config, client=None):
                 if not save_config(config_filename, conf):
                     _LOGGER.warning('Failed to save configuration file %s',
                                     config_filename)
-                hass.async_add_job(configurator.request_done, instance)
+                hass.async_add_job(configurator.request_done,
+                                   hass.data[KEY_CONFIG].get(data_key))
 
             hass.async_add_job(success)
 
-        instance = hass.data[KEY_CONFIG][data_key] = \
+        hass.data[KEY_CONFIG][data_key] = \
             configurator.request_config(
                 'TelldusLive ({})'.format('LocalAPI' if host
                                           else 'Cloud service'),
