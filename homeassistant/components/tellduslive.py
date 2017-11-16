@@ -25,7 +25,7 @@ APPLICATION_NAME = 'Home Assistant'
 
 DOMAIN = 'tellduslive'
 
-REQUIREMENTS = ['tellduslive==0.10.0']
+REQUIREMENTS = ['tellduslive==0.10.1']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -172,13 +172,13 @@ def setup(hass, config, session=None):
         _LOGGER.info('Found entry in configuration.yaml. '
                      'Requesting TelldusLive cloud service configuration')
         hass.async_add_job(request_configuration)
-        
+
         if CONF_HOST in config.get(DOMAIN, {}):
             _LOGGER.info('Found TelldusLive host entry in configuration.yaml. '
                          'Requesting Telldus Local API configuration')
             hass.async_add_job(request_configuration,
                                config.get(DOMAIN).get(CONF_HOST))
-        
+
         return True
     else:
         _LOGGER.info('Tellstick discovered, awaiting discovery callback')
