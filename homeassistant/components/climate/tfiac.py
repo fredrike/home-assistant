@@ -10,7 +10,9 @@ from homeassistant.components.climate.const import (
     STATE_AUTO, STATE_COOL, STATE_DRY, STATE_FAN_ONLY, STATE_HEAT,
     SUPPORT_FAN_MODE, SUPPORT_ON_OFF, SUPPORT_OPERATION_MODE,
     SUPPORT_SWING_MODE, SUPPORT_TARGET_TEMPERATURE)
-from homeassistant.const import ATTR_TEMPERATURE, CONF_HOST, TEMP_FAHRENHEIT
+from homeassistant.const import (
+    ATTR_TEMPERATURE, CONF_HOST, EVENT_HOMEASSISTANT_STOP, TEMP_FAHRENHEIT)
+from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 from homeassistant.util.temperature import convert as convert_temperature
@@ -72,6 +74,22 @@ class TfiacClimate(ClimateDevice):
         hass.data[DOMAIN] = self
         self._client = client
         self._available = True
+
+        connect_task = hass.loop.create_task(
+            client.start(self.schedule_update_ha_state))
+
+        @callback
+        def gw_stop(event):
+            """Trigger to stop the gateway."""
+            client.stop()
+            if not connect_task.done():
+                connect_task.cancel()
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, gw_stop)
+
+    @property
+    def should_poll(self):
+        """Return False as this is local push."""
+        return False
 
     @property
     def available(self):
