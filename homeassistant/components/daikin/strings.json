@@ -4,9 +4,10 @@
     "step": {
       "user": {
         "title": "Configure Daikin AC",
-        "description": "Enter IP address of your Daikin AC.",
+        "description": "Enter IP address and key of your Daikin AC. (leave Key blank unless you have a BRP072Cxx device)",
         "data": {
-          "host": "Host"
+          "host": "Host",
+          "key": "Key"
         }
       }
     },

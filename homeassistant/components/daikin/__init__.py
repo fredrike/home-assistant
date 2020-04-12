@@ -17,6 +17,7 @@ from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.util import Throttle
 
 from . import config_flow  # noqa: F401
+from .const import CONF_KEY, CONF_UUID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +31,22 @@ COMPONENT_TYPES = ["climate", "sensor", "switch"]
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
-            {vol.Optional(CONF_HOSTS, default=[]): vol.All(cv.ensure_list, [cv.string])}
+            {
+                vol.Optional(CONF_HOSTS, default=[]): vol.All(
+                    cv.ensure_list,
+                    [
+                        vol.Any(
+                            cv.string,
+                            vol.Schema(
+                                {
+                                    vol.Required(CONF_HOST): cv.string,
+                                    vol.Optional(CONF_KEY): cv.string,
+                                }
+                            ),
+                        )
+                    ],
+                )
+            }
         )
     },
     extra=vol.ALLOW_EXTRA,
@@ -50,9 +66,17 @@ async def async_setup(hass, config):
             )
         )
     for host in hosts:
+        if isinstance(host, dict):
+            _LOGGER.warning("%s", host)
+            key = host.get(CONF_KEY)
+            host = host.get(CONF_HOST)
+        else:
+            key = None
         hass.async_create_task(
             hass.config_entries.flow.async_init(
-                DOMAIN, context={"source": SOURCE_IMPORT}, data={CONF_HOST: host}
+                DOMAIN,
+                context={"source": SOURCE_IMPORT},
+                data={CONF_HOST: host, CONF_KEY: key},
             )
         )
     return True
@@ -61,7 +85,9 @@ async def async_setup(hass, config):
 async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
     """Establish connection with Daikin."""
     conf = entry.data
-    daikin_api = await daikin_api_setup(hass, conf[CONF_HOST])
+    daikin_api = await daikin_api_setup(
+        hass, conf[CONF_HOST], conf.get(CONF_KEY), conf.get(CONF_UUID)
+    )
     if not daikin_api:
         return False
     hass.data.setdefault(DOMAIN, {}).update({entry.entry_id: daikin_api})
@@ -86,13 +112,13 @@ async def async_unload_entry(hass, config_entry):
     return True
 
 
-async def daikin_api_setup(hass, host):
+async def daikin_api_setup(hass, host, key, uuid):
     """Create a Daikin instance only once."""
 
     session = hass.helpers.aiohttp_client.async_get_clientsession()
     try:
-        with timeout(10):
-            device = Appliance(host, session)
+        with timeout(60):
+            device = Appliance(host, session, key, uuid)
             await device.init()
     except asyncio.TimeoutError:
         _LOGGER.debug("Connection to %s timed out", host)
