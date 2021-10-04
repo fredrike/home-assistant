@@ -4,6 +4,7 @@ import logging
 from uuid import uuid4
 
 from aiohttp import ClientError, web_exceptions
+from aiohttp.client_exceptions import ClientConnectorError
 from async_timeout import timeout
 from pydaikin.daikin_base import Appliance
 from pydaikin.discovery import Discovery
