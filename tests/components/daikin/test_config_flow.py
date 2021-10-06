@@ -3,12 +3,7 @@
 import asyncio
 from unittest.mock import PropertyMock, patch
 
-<<<<<<< HEAD
 from aiohttp import ClientError, web_exceptions
-=======
-from aiohttp import ClientConnectorError, ClientError
-from aiohttp.web_exceptions import HTTPForbidden
->>>>>>> 81e771c1f5 (Update tests)
 import pytest
 
 from homeassistant.components.daikin.const import KEY_MAC
