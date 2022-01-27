@@ -76,6 +76,9 @@ class MinutPointBinarySensor(MinutPointEntity, BinarySensorEntity):
         self._device_name = device_name
         self._async_unsub_hook_dispatcher_connect = None
         self._events = EVENTS[device_name]
+        if self.device_class == BinarySensorDeviceClass.CONNECTIVITY:
+            # connectivity is the other way around.
+            self._events = self._events[::-1]
 
     async def async_added_to_hass(self):
         """Call when entity is added to HOme Assistant."""
@@ -96,7 +99,7 @@ class MinutPointBinarySensor(MinutPointEntity, BinarySensorEntity):
             return
         if self.device_class == BinarySensorDeviceClass.CONNECTIVITY:
             # connectivity is the other way around.
-            self._attr_is_on = not (self._events[0] in self.device.ongoing_events)
+            self._attr_is_on = not (self._events[1] in self.device.ongoing_events)
         else:
             self._attr_is_on = self._events[0] in self.device.ongoing_events
         self.async_write_ha_state()
@@ -112,17 +115,11 @@ class MinutPointBinarySensor(MinutPointEntity, BinarySensorEntity):
             return
         _LOGGER.debug("Received webhook: %s", _type)
         if _type == self._events[0]:
-            _is_on = True
+            self._attr_is_on = True
         elif _type == self._events[1]:
-            _is_on = False
+            self._attr_is_on = False
         else:
             return
-
-        if self.device_class == BinarySensorDeviceClass.CONNECTIVITY:
-            # connectivity is the other way around.
-            self._attr_is_on = not _is_on
-        else:
-            self._attr_is_on = _is_on
         self.async_write_ha_state()
 
     @property
