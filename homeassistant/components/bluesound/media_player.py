@@ -26,6 +26,7 @@ from homeassistant.components.media_player import (
     MediaType,
     async_process_play_media_url,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_HOST,
@@ -139,6 +140,21 @@ def _add_player(hass, async_add_entities, host, port=None, name=None):
         _init_player()
     else:
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, _init_player)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up BlueSound from a config entry."""
+
+    _add_player(
+        hass,
+        async_add_entities,
+        host=config_entry.data.get(CONF_HOST),
+        port=config_entry.data.get(CONF_PORT, DEFAULT_PORT),
+    )
 
 
 async def async_setup_platform(
