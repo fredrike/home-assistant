@@ -48,7 +48,7 @@ async def async_setup_entry(
 
     async_dispatcher_connect(
         hass,
-        POINT_DISCOVERY_NEW.format(ALARM_CONTROL_PANEL_DOMAIN, POINT_DOMAIN),
+        POINT_DISCOVERY_NEW.format(ALARM_CONTROL_PANEL_DOMAIN),
         async_discover_home,
     )
 
